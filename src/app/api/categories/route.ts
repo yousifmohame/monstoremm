@@ -1,0 +1,36 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { collection, getDocs, query, orderBy, getCountFromServer, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
+export async function GET(request: NextRequest) {
+  try {
+    // Query categories ordered by sortOrder
+    const categoriesRef = collection(db, 'categories');
+    const q = query(categoriesRef, orderBy('sortOrder', 'asc'));
+    const querySnapshot = await getDocs(q);
+    
+    const categories: any[] = [];
+    
+    for (const doc of querySnapshot.docs) {
+      const categoryData = doc.data();
+      const productsRef = collection(db, 'products');
+      const productsQuery = query(productsRef, where('categoryId', '==', doc.id));
+      const productsSnapshot = await getCountFromServer(productsQuery);
+      const productsCount = productsSnapshot.data().count;
+
+      categories.push({
+        id: doc.id,
+        ...categoryData,
+        count: productsCount
+      });
+    }
+    
+    return NextResponse.json(categories);
+  } catch (error: any) {
+    console.error('Categories API Error:', error);
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    );
+  }
+}
