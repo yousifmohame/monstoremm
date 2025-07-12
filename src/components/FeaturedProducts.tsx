@@ -26,7 +26,7 @@ const FeaturedProducts = () => {
       bestSeller: activeTab === 'bestseller'
     };
     // استدعاء الدالة لجلب أول 6 منتجات تطابق الفلتر
-    fetchProducts(filter, 6);
+    fetchProducts(filter);
   }, [activeTab]); // سيتم إعادة تنفيذ هذا التأثير عند تغيير activeTab
 
   const handleAddToCart = (product: any) => {
