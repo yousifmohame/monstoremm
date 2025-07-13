@@ -34,6 +34,7 @@ if (getApps().length === 0) {
 
 const adminDb = getFirestore(app);
 const adminAuth = getAuth(app);
+// Correctly export the storage bucket instance
 const adminStorage = getStorage(app).bucket();
 
 export { adminDb, adminAuth, adminStorage, FieldValue };
