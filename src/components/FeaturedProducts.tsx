@@ -6,28 +6,25 @@ import Image from 'next/image'
 import { Star, ShoppingCart, Heart, Eye, ArrowLeft } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useStore } from '@/store/useStore'
-// 1. استيراد الـ Hook الفعلي وحذف البيانات الوهمية
 import { Product, useProducts } from '@/hooks/useProducts'
 import ProductModal from './ProductModal'
 
 const FeaturedProducts = () => {
   const { addToCart, addToWishlist, removeFromWishlist, isInWishlist } = useStore()
-  // 2. استخدام الـ Hook لجلب المنتجات وحالة التحميل
   const { products, loading, fetchProducts } = useProducts()
   const [activeTab, setActiveTab] = useState<'featured' | 'new' | 'bestseller'>('featured')
   const [selectedProduct, setSelectedProduct] = useState<any>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  // 3. استخدام useEffect لجلب المنتجات عند تغيير التبويب
   useEffect(() => {
     const filter = {
       featured: activeTab === 'featured',
       newArrival: activeTab === 'new',
       bestSeller: activeTab === 'bestseller'
     };
-    // استدعاء الدالة لجلب أول 6 منتجات تطابق الفلتر
+    // Corrected the function call to have only one argument
     fetchProducts(filter);
-  }, [activeTab]); // سيتم إعادة تنفيذ هذا التأثير عند تغيير activeTab
+  }, [activeTab, fetchProducts]);
 
   const handleAddToCart = (product: any) => {
     addToCart({
@@ -58,7 +55,6 @@ const FeaturedProducts = () => {
     { id: 'bestseller', label: 'الأكثر مبيعاً' },
   ];
   
-  // 4. عرض حالة التحميل للمستخدم
   if (loading && products.length === 0) {
     return (
       <section className="py-20 bg-gray-50">
@@ -81,8 +77,6 @@ const FeaturedProducts = () => {
     <>
       <section className="py-20 bg-gray-50">
         <div className="container-custom">
-          {/* ... (واجهة المستخدم JSX تبقى كما هي بدون تغيير كبير) ... */}
-           {/* Header */}
            <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -96,7 +90,6 @@ const FeaturedProducts = () => {
               اكتشف مجموعتنا المختارة بعناية من أفضل منتجات الأنمي
             </p>
 
-            {/* Tabs */}
             <div className="flex justify-center mb-12">
               <div className="bg-white rounded-2xl p-2 inline-flex shadow-lg">
                 {tabs.map((tab) => (
@@ -117,7 +110,6 @@ const FeaturedProducts = () => {
             </div>
           </motion.div>
 
-           {/* Products Grid */}
           <motion.div
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
             layout
@@ -142,7 +134,6 @@ const FeaturedProducts = () => {
                     />
                   </Link>
 
-                  {/* Overlay Actions */}
                   <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3">
                     <motion.button
                       onClick={() => handleViewProduct(product)}
@@ -166,7 +157,6 @@ const FeaturedProducts = () => {
                     </motion.button>
                   </div>
 
-                  {/* Badges */}
                   <div className="absolute top-4 right-4 flex flex-col gap-2">
                     {product.featured && (
                       <span className="bg-primary-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
@@ -187,7 +177,6 @@ const FeaturedProducts = () => {
                 </div>
 
                 <div className="p-6 space-y-4">
-                  {/* Category & Rating */}
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-500 font-medium">{product.category?.nameAr}</span>
                     <div className="flex items-center gap-1">
@@ -197,14 +186,12 @@ const FeaturedProducts = () => {
                     </div>
                   </div>
 
-                  {/* Product Name */}
                   <Link href={`/products/${product.slug}`}>
                     <h3 className="font-bold text-gray-800 text-lg group-hover:text-primary-600 transition-colors">
                       {product.nameAr}
                     </h3>
                   </Link>
 
-                  {/* Price & Actions */}
                   <div className="flex items-center justify-between pt-2">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
@@ -218,7 +205,6 @@ const FeaturedProducts = () => {
                         )}
                       </div>
 
-                      {/* Stock indicator */}
                       {product.stock <= 10 && (
                         <p className={`text-xs font-medium ${product.stock === 0 ? 'text-red-600' : 'text-orange-500'
                           }`}>
@@ -246,7 +232,6 @@ const FeaturedProducts = () => {
         </div>
       </section>
 
-      {/* Product Modal */}
       <ProductModal
         product={selectedProduct}
         isOpen={isModalOpen}
