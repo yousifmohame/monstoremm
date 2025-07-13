@@ -5,18 +5,27 @@ import { getStorage } from 'firebase-admin/storage';
 
 let app: App;
 
-// This pattern ensures that the app is initialized only once in a serverless environment
-if (getApps().length === 0) {
-  // The code will rely on environment variables that we will add in Vercel
-  const serviceAccount = {
-    projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
-    clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-    // Handle the private key correctly from environment variables
-    privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY!.replace(/\\n/g, '\n'),
-  };
+// The credentials from Vercel environment variables
+const serviceAccount = {
+  projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
+  clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+  privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY,
+};
 
+// Check if all required environment variables are present
+if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
+  throw new Error('Firebase Admin environment variables are not set. Please add them to your Vercel project settings.');
+}
+
+// Format the private key correctly
+const formattedPrivateKey = serviceAccount.privateKey.replace(/\\n/g, '\n');
+
+if (getApps().length === 0) {
   app = initializeApp({
-    credential: cert(serviceAccount),
+    credential: cert({
+      ...serviceAccount,
+      privateKey: formattedPrivateKey,
+    }),
     storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   });
 } else {
@@ -25,6 +34,6 @@ if (getApps().length === 0) {
 
 const adminDb = getFirestore(app);
 const adminAuth = getAuth(app);
-const adminStorage = getStorage(app);
+const adminStorage = getStorage(app).bucket();
 
 export { adminDb, adminAuth, adminStorage, FieldValue };
