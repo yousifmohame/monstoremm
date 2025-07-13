@@ -30,14 +30,15 @@ export async function POST(request: NextRequest) {
     // Upload images and get their URLs
     const imageUrls: ProductImage[] = await Promise.all(
       imageFiles.map(async (file, index) => {
-        const imageRef = adminStorage.bucket().file(`products/${productId}/${file.name}`);
+        // Corrected usage: adminStorage is now the bucket itself
+        const imageRef = adminStorage.file(`products/${productId}/${file.name}`);
         const buffer = Buffer.from(await file.arrayBuffer());
         await imageRef.save(buffer, {
           metadata: { contentType: file.type },
         });
-        const url = await imageRef.getSignedUrl({ action: 'read', expires: '03-09-2491' });
+        const [url] = await imageRef.getSignedUrl({ action: 'read', expires: '03-09-2491' });
         return {
-          imageUrl: url[0],
+          imageUrl: url,
           altText: productData.nameAr || 'Product image',
           sortOrder: index,
           isPrimary: index === 0,
