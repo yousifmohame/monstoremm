@@ -34,7 +34,8 @@ const Hero = React.memo(() => {
     if (isInitialLoad) {
       const loadProducts = async () => {
         try {
-          await fetchProducts({ featured: true }, 1);
+          // Corrected the function call to have only one argument
+          await fetchProducts({ featured: true });
         } catch (err) {
           console.error('Error loading products:', err);
         } finally {
