@@ -168,8 +168,8 @@ export const useProducts = () => {
 
         if (includeProduct) {
           fetchedProducts.push({
-            ...productData,
             id: document.id,
+            ...productData,
           });
         }
       }
@@ -209,8 +209,8 @@ export const useProducts = () => {
       }
 
       return {
-        ...productData,
         id: productDoc.id,
+        ...productData,
       };
     } catch (error: any) {
       console.error("Error fetching product by slug:", error);
