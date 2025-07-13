@@ -15,6 +15,7 @@ import {
   writeBatch,
   increment,
   QueryConstraint,
+  limit,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useStore } from "@/store/useStore";
@@ -84,10 +85,9 @@ export const useOrders = () => {
       } else {
         ordersQuery = query(collection(db, "orders"), where("userId", "==", user.id));
       }
-
+      
       const q = query(ordersQuery, ...constraints);
       const querySnapshot = await getDocs(q);
-
       const fetchedOrders: Order[] = [];
       querySnapshot.forEach((doc) => {
         fetchedOrders.push({
@@ -95,7 +95,6 @@ export const useOrders = () => {
           ...doc.data(),
         } as Order);
       });
-
       setOrders(fetchedOrders);
     } catch (err: any) {
       console.error("Error fetching orders:", err);
@@ -122,8 +121,8 @@ export const useOrders = () => {
         return null;
       }
       return {
-        ...orderData,
         id: orderDoc.id,
+        ...orderData,
       };
     } catch (err: any) {
       console.error("Error fetching order:", err);
@@ -144,7 +143,7 @@ export const useOrders = () => {
     try {
       const cleanOrderNumber = orderNumber.trim().toUpperCase();
       const ordersRef = collection(db, "orders");
-      const q = query(ordersRef, where("orderNumber", "==", cleanOrderNumber));
+      const q = query(ordersRef, where("orderNumber", "==", cleanOrderNumber), limit(1));
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
@@ -159,8 +158,8 @@ export const useOrders = () => {
       }
 
       return {
-        ...orderData,
         id: orderDoc.id,
+        ...orderData,
       };
     } catch (err: any) {
       console.error('Order fetch error:', err.message);
