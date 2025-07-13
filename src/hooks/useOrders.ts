@@ -121,8 +121,8 @@ export const useOrders = () => {
         return null;
       }
       return {
-        id: orderDoc.id,
         ...orderData,
+        id: orderDoc.id,
       };
     } catch (err: any) {
       console.error("Error fetching order:", err);
@@ -158,8 +158,8 @@ export const useOrders = () => {
       }
 
       return {
-        id: orderDoc.id,
         ...orderData,
+        id: orderDoc.id,
       };
     } catch (err: any) {
       console.error('Order fetch error:', err.message);
