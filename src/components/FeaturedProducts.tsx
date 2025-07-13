@@ -3,10 +3,10 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Star, ShoppingCart, Heart, Eye, ArrowLeft } from 'lucide-react'
+import { Star, ShoppingCart, Heart, Eye } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useStore } from '@/store/useStore'
-import { Product, useProducts } from '@/hooks/useProducts'
+import { useProducts } from '@/hooks/useProducts'
 import ProductModal from './ProductModal'
 
 const FeaturedProducts = () => {
@@ -22,7 +22,6 @@ const FeaturedProducts = () => {
       newArrival: activeTab === 'new',
       bestSeller: activeTab === 'bestseller'
     };
-    // Corrected the function call to have only one argument
     fetchProducts(filter);
   }, [activeTab, fetchProducts]);
 
