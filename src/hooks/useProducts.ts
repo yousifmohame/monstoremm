@@ -98,7 +98,6 @@ export const useProducts = () => {
       const productsRef = collection(db, "products");
       const constraints: QueryConstraint[] = [];
 
-      // Apply filters
       if (filters) {
         if (filters.category) {
           constraints.push(where("categoryId", "==", filters.category));
@@ -169,8 +168,8 @@ export const useProducts = () => {
 
         if (includeProduct) {
           fetchedProducts.push({
-            ...productData,
             id: document.id,
+            ...productData,
           });
         }
       }
@@ -210,8 +209,8 @@ export const useProducts = () => {
       }
 
       return {
-        ...productData,
         id: productDoc.id,
+        ...productData,
       };
     } catch (error: any) {
       console.error("Error fetching product by slug:", error);
@@ -221,7 +220,7 @@ export const useProducts = () => {
       setLoading(false);
     }
   };
-
+  
   const addProduct = async (
     productData: Omit<Product, "id" | "createdAt" | "updatedAt">,
     imageFiles: File[]
