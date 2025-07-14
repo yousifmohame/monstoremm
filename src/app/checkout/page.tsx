@@ -18,14 +18,13 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useStore } from '@/store/useStore';
 import { useAuth } from '@/hooks/useAuth';
-import { useSiteSettings } from '@/hooks/useSiteSettings'; // <-- 1. استيراد الهوك الجديد
+import { useSiteSettings } from '@/hooks/useSiteSettings';
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { user, profile, getIdToken } = useAuth();
   const { cart, getTotalPrice, clearCart } = useStore();
-  
-  // 2. استخدام الهوك لجلب الإعدادات
+
   const { settings, loading: settingsLoading } = useSiteSettings();
 
   const [isOrderComplete, setIsOrderComplete] = useState(false);
@@ -67,11 +66,10 @@ export default function CheckoutPage() {
   ) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
-  
-  // 3. حساب القيم الديناميكية
+
   const subtotal = getTotalPrice();
-  const shippingCost = settings?.shippingCost ?? 25.00; // Use default if settings not loaded
-  const taxRate = settings?.taxRate ?? 0.15; // Use default if settings not loaded
+  const shippingCost = settings?.shippingCost ?? 25.00;
+  const taxRate = settings?.taxRate ?? 0.15;
   const taxAmount = subtotal * taxRate;
   const totalAmount = subtotal + shippingCost + taxAmount;
   const currency = settings?.currency || 'SAR';
@@ -104,7 +102,6 @@ export default function CheckoutPage() {
           },
           paymentMethod: formData.paymentMethod,
           notes: formData.notes,
-          // Include calculated amounts in the order data
           subtotal,
           shippingAmount: shippingCost,
           taxAmount,
