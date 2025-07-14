@@ -223,6 +223,21 @@ export const useAuth = () => {
     return await auth.currentUser.getIdToken(forceRefresh);
   };
 
+  const deleteAccount = async () => {
+    const token = await getIdToken();
+    const response = await fetch('/api/auth/delete', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete account.');
+    }
+    setUser(null);
+    setProfile(null);
+    router.push('/');
+  };
+
   return {
     user,
     profile,
@@ -233,6 +248,7 @@ export const useAuth = () => {
     register,
     logout,
     changeUserPassword,
-    getIdToken, // Add this to the returned object
+    deleteAccount, // Expose the new function
+    getIdToken,
   };
 };
