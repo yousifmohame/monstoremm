@@ -1,5 +1,3 @@
-// src/hooks/useCategories.ts
-
 /** @format */
 
 import { useState, useCallback } from "react";
@@ -11,6 +9,7 @@ import {
   orderBy,
   limit,
   QueryConstraint,
+  getCountFromServer,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -41,35 +40,30 @@ export const useCategories = () => {
     setLoading(true);
     setError(null);
     try {
-      const categoriesRef = collection(db, "categories");
-      // Explicitly type the array
-      const constraints: QueryConstraint[] = [orderBy("sortOrder", "asc")];
-      
-      // The limit constraint is no longer applied
-      // if (itemsLimit) {
-      //   constraints.push(limit(itemsLimit));
-      // }
-      
-      const q = query(categoriesRef, ...constraints);
-      const querySnapshot = await getDocs(q);
+      // This fetch call goes to the API route defined above
+      const response = await fetch('/api/categories');
+      if (!response.ok) {
+        throw new Error('Failed to fetch categories');
+      }
+      const data = await response.json();
 
-      const fetchedCategories: Category[] = querySnapshot.docs.map((doc) => {
-        const data = doc.data();
+      const fetchedCategories: Category[] = data.map((categoryData: any) => {
         return {
-          id: doc.id,
-          nameAr: data.nameAr,
-          name: data.name,
-          slug: data.slug,
-          description: data.description,
-          descriptionAr: data.descriptionAr,
-          imageUrl: data.imageUrl,
-          sortOrder: data.sortOrder,
-          isActive: data.isActive,
+          id: categoryData.id,
+          nameAr: categoryData.nameAr,
+          name: categoryData.name,
+          slug: categoryData.slug,
+          description: categoryData.description,
+          descriptionAr: categoryData.descriptionAr,
+          imageUrl: categoryData.imageUrl,
+          sortOrder: categoryData.sortOrder,
+          isActive: categoryData.isActive,
           _count: {
-            products: data.productsCount || 0, 
+            // It correctly reads 'productsCount' from the API response
+            products: categoryData.productsCount || 0,
           },
-          createdAt: data.createdAt?.toDate(),
-          updatedAt: data.updatedAt?.toDate(),
+          createdAt: categoryData.createdAt?.toDate ? categoryData.createdAt.toDate() : categoryData.createdAt,
+          updatedAt: categoryData.updatedAt?.toDate ? categoryData.updatedAt.toDate() : categoryData.updatedAt,
         };
       });
 
@@ -83,11 +77,12 @@ export const useCategories = () => {
   }, []);
 
   const fetchCategoryBySlug = useCallback(async (slug: string) => {
+    // ... (This function remains the same)
     setLoading(true);
     setError(null);
     try {
       const categoriesRef = collection(db, "categories");
-      const q = query(categoriesRef, where("slug", "==", slug), limit(1)); // Kept limit(1) here as we only need one category
+      const q = query(categoriesRef, where("slug", "==", slug), limit(1));
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
@@ -98,11 +93,17 @@ export const useCategories = () => {
       const categoryDoc = querySnapshot.docs[0];
       const categoryData = categoryDoc.data();
       
+      // Also calculate product count for the single category
+      const productsRef = collection(db, 'products');
+      const productsQuery = query(productsRef, where('categoryId', '==', categoryDoc.id));
+      const productsSnapshot = await getCountFromServer(productsQuery);
+      const productsCount = productsSnapshot.data().count;
+
       return {
         ...categoryData,
         id: categoryDoc.id,
         _count: {
-          products: categoryData.productsCount || 0,
+          products: productsCount || 0,
         },
         createdAt: categoryData.createdAt?.toDate(),
         updatedAt: categoryData.updatedAt?.toDate(),
