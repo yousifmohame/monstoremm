@@ -48,9 +48,9 @@ export const useAdminProducts = () => {
         }
     }, []);
 
-    // **New Addition: Function to add a product**
     const addProduct = useCallback(async (productData: Omit<Product, "id" | "createdAt" | "updatedAt">, imageFiles: File[]) => {
         setLoading(true);
+        setError(null);
         try {
             const idToken = await auth.currentUser?.getIdToken(true);
             if (!idToken) throw new Error("Authentication required");
@@ -63,16 +63,14 @@ export const useAdminProducts = () => {
 
             const response = await fetch('/api/admin/products/add', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${idToken}`,
-                },
+                headers: { 'Authorization': `Bearer ${idToken}` },
                 body: formData, 
             });
             if (!response.ok) {
                  const errorData = await response.json();
                  throw new Error(errorData.error || 'Failed to add product');
             }
-            await fetchProducts(); // Refetch to update the list
+            await fetchProducts();
         } catch (err: any) {
             setError(err.message);
             throw err;
@@ -81,17 +79,40 @@ export const useAdminProducts = () => {
         }
     }, [fetchProducts]);
 
-    const updateProduct = useCallback(async (productId: string, updateData: Partial<Product>) => {
-        const idToken = await auth.currentUser?.getIdToken(true);
-        if (!idToken) throw new Error("Authentication required");
-        const response = await fetch(`/api/admin/products/${productId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
-            body: JSON.stringify(updateData),
-        });
-        if (!response.ok) throw new Error('Failed to update product');
-        setProducts(prev => prev.map(p => p.id === productId ? { ...p, ...updateData } : p));
-    }, []);
+    const updateProduct = useCallback(async (productId: string, updateData: Partial<Product>, newImageFiles: File[] = [], imagesToDelete: string[] = []) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const idToken = await auth.currentUser?.getIdToken(true);
+            if (!idToken) throw new Error("Authentication required");
+
+            const formData = new FormData();
+            formData.append('productData', JSON.stringify(updateData));
+            formData.append('imagesToDelete', JSON.stringify(imagesToDelete));
+            
+            newImageFiles.forEach(file => {
+                formData.append('newImages', file);
+            });
+
+            const response = await fetch(`/api/admin/products/${productId}`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${idToken}` },
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to update product');
+            }
+            
+            await fetchProducts();
+        } catch (err: any) {
+            setError(err.message);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    }, [fetchProducts]);
 
     const deleteProduct = useCallback(async (productId: string) => {
         const idToken = await auth.currentUser?.getIdToken(true);
