@@ -267,6 +267,12 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                   {categories.map((cat) => <option key={cat.id} value={cat.id}>{cat.nameAr}</option>)}
                 </select>
                 <div className="mt-4 space-y-2">
+                  <label className="flex items-center gap-2"><input type="checkbox" name="featured" checked={formData.featured} onChange={handleChange}/>مميز</label>
+                  <label className="flex items-center gap-2"><input type="checkbox" name="newArrival" checked={formData.newArrival} onChange={handleChange}/>وصل حديثاً</label>
+                  <label className="flex items-center gap-2"><input type="checkbox" name="bestSeller" checked={formData.bestSeller} onChange={handleChange}/>الأكثر مبيعاً</label>
+                  <label className="flex items-center gap-2"><input type="checkbox" name="onSale" checked={formData.onSale} onChange={handleChange}/>في التخفيضات</label>
+                </div>
+                <div className="mt-4 space-y-2">
                   <label className="flex items-center gap-2"><input type="checkbox" name="featured" checked={formData.featured} onChange={handleChange}/>منتج مميز</label>
                 </div>
               </motion.div>
