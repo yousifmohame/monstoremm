@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { Heart, ShoppingCart, X, Star, Share2 } from 'lucide-react';
 import Image from 'next/image';
@@ -9,16 +9,12 @@ import Footer from '@/components/Footer';
 import Cart from '@/components/Cart';
 import { useStore } from '@/store/useStore';
 import { useAuth } from '@/hooks/useAuth';
-import { mockProducts } from '@/lib/mockData';
+import { useWishlist } from '@/hooks/useWishlist'; // <-- استخدام الهوك الجديد
 
 export default function WishlistPage() {
   const { user } = useAuth();
-  const { wishlist, removeFromWishlist, addToCart } = useStore();
-  
-  // Mock wishlist products (in a real app, this would come from the API)
-  const wishlistProducts = mockProducts.filter(product => 
-    wishlist.includes(product.id)
-  );
+  const { addToCart } = useStore();
+  const { wishlistProducts, loading, removeFromWishlist } = useWishlist(); // <-- استخدام الهوك الجديد
 
   const handleAddToCart = (product: any) => {
     addToCart({
@@ -26,12 +22,9 @@ export default function WishlistPage() {
       name: product.nameAr,
       price: product.salePrice || product.price,
       image: product.images?.[0]?.imageUrl || '/placeholder.jpg',
-      quantity: 1
-    });
-  };
+      quantity: 1,
 
-  const handleRemoveFromWishlist = (productId: string) => {
-    removeFromWishlist(productId);
+    });
   };
 
   const handleShare = async () => {
@@ -43,18 +36,15 @@ export default function WishlistPage() {
           url: window.location.href,
         });
       } catch (error) {
-        // If sharing fails (permission denied, user cancellation, etc.), fall back to clipboard
         try {
           await navigator.clipboard.writeText(window.location.href);
           alert('تم نسخ الرابط!');
         } catch (clipboardError) {
-          // Final fallback if clipboard also fails
           console.error('Failed to copy to clipboard:', clipboardError);
           alert('حدث خطأ في المشاركة');
         }
       }
     } else {
-      // Fallback for browsers that don't support Web Share API
       try {
         await navigator.clipboard.writeText(window.location.href);
         alert('تم نسخ الرابط!');
@@ -69,15 +59,26 @@ export default function WishlistPage() {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header />
-        <div className="container-custom py-20">
-          <div className="text-center">
-            <Heart className="h-20 w-20 text-gray-300 mx-auto mb-6" />
-            <h1 className="text-3xl font-bold text-gray-800 mb-4">يجب تسجيل الدخول أولاً</h1>
-            <p className="text-gray-600 mb-8">للوصول إلى قائمة أمنياتك، يرجى تسجيل الدخول</p>
-            <a href="/auth/login" className="btn-primary">
-              تسجيل الدخول
-            </a>
-          </div>
+        <div className="container-custom py-20 text-center">
+          <Heart className="h-20 w-20 text-gray-300 mx-auto mb-6" />
+          <h1 className="text-3xl font-bold text-gray-800 mb-4">يجب تسجيل الدخول أولاً</h1>
+          <p className="text-gray-600 mb-8">للوصول إلى قائمة أمنياتك، يرجى تسجيل الدخول</p>
+          <a href="/auth/login" className="btn-primary">
+            تسجيل الدخول
+          </a>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="container-custom py-20 text-center">
+          <div className="loading-dots mb-4"><div></div><div></div><div></div><div></div></div>
+          <p>جاري تحميل قائمة الأمنيات...</p>
         </div>
         <Footer />
       </div>
@@ -87,7 +88,7 @@ export default function WishlistPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      
+
       {/* Hero Section */}
       <section className="relative anime-gradient text-white py-20 overflow-hidden">
         <div className="absolute inset-0">
@@ -170,7 +171,7 @@ export default function WishlistPage() {
                   
                   <button
                     onClick={() => {
-                      wishlistProducts.forEach(product => handleRemoveFromWishlist(product.id));
+                      wishlistProducts.forEach(product => removeFromWishlist(product.id));
                     }}
                     className="btn-outline flex items-center gap-2"
                   >
@@ -206,7 +207,7 @@ export default function WishlistPage() {
                       
                       {/* Remove Button */}
                       <button
-                        onClick={() => handleRemoveFromWishlist(product.id)}
+                        onClick={() => removeFromWishlist(product.id)}
                         className="absolute top-4 right-4 bg-white p-2 rounded-full shadow-lg hover:bg-gray-100 transition-colors opacity-0 group-hover:opacity-100"
                       >
                         <X className="h-4 w-4 text-gray-700" />
@@ -273,53 +274,6 @@ export default function WishlistPage() {
                     </div>
                   </motion.div>
                 ))}
-              </motion.div>
-
-              {/* Recommendations */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.4 }}
-                className="mt-20"
-              >
-                <h3 className="text-2xl font-bold text-gray-800 mb-8 text-center">
-                  منتجات قد تعجبك أيضاً
-                </h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {mockProducts
-                    .filter(product => !wishlist.includes(product.id))
-                    .slice(0, 4)
-                    .map((product: any, index: number) => (
-                      <motion.div
-                        key={product.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1, duration: 0.5 }}
-                        className="anime-card group overflow-hidden"
-                        whileHover={{ y: -5 }}
-                      >
-                        <div className="relative overflow-hidden h-48">
-                          <Image
-                            src={product.images?.[0]?.imageUrl || '/placeholder.jpg'}
-                            alt={product.nameAr}
-                            width={300}
-                            height={200}
-                            className="w-full h-full object-cover product-image"
-                          />
-                        </div>
-                        
-                        <div className="p-4">
-                          <h4 className="font-bold text-gray-800 mb-2 line-clamp-2">
-                            {product.nameAr}
-                          </h4>
-                          <p className="text-primary-600 font-bold">
-                            {product.salePrice || product.price} ريال
-                          </p>
-                        </div>
-                      </motion.div>
-                    ))}
-                </div>
               </motion.div>
             </>
           )}
