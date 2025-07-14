@@ -12,6 +12,7 @@ import {
   reauthenticateWithCredential,
   updatePassword,
   getAuth,
+  sendPasswordResetEmail, // Import the function here
 } from "firebase/auth";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
@@ -198,6 +199,34 @@ export const useAuth = () => {
     }
   };
 
+  // **NEW FUNCTION FOR FORGOT PASSWORD**
+  const sendPasswordReset = async (email: string) => {
+  try {
+    await sendPasswordResetEmail(auth, email, {
+      url: 'https://monstoremm.vercel.app/auth/login', // URL للرجوع بعد إعادة التعيين
+      handleCodeInApp: false // أو true إذا كنت تريد التعامل مع الرمز في التطبيق
+    });
+    console.log('Password reset email sent successfully');
+  } catch (error: any) {
+    console.error('Password reset error:', error);
+    let errorMessage = 'حدث خطأ أثناء إرسال رابط إعادة التعيين';
+    
+    switch (error.code) {
+      case 'auth/user-not-found':
+        errorMessage = 'لا يوجد حساب مرتبط بهذا البريد الإلكتروني';
+        break;
+      case 'auth/invalid-email':
+        errorMessage = 'عنوان البريد الإلكتروني غير صالح';
+        break;
+      case 'auth/too-many-requests':
+        errorMessage = 'لقد طلبت العديد من محاولات إعادة التعيين، يرجى الانتظار قبل المحاولة مرة أخرى';
+        break;
+    }
+    
+    throw new Error(errorMessage);
+  }
+};
+
   const changeUserPassword = async (
     currentPassword: string,
     newPassword: string
@@ -247,8 +276,9 @@ export const useAuth = () => {
     login,
     register,
     logout,
+    sendPasswordReset, // Expose the new function
     changeUserPassword,
-    deleteAccount, // Expose the new function
+    deleteAccount,
     getIdToken,
   };
 };
