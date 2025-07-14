@@ -1,6 +1,6 @@
 /** @format */
 export const runtime = "nodejs";
-export const dynamic = 'force-dynamic'; // This line is the fix
+export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from "next/server";
 import {
@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
 
+    // Parse query parameters
     const category = searchParams.get("category");
     const featured = searchParams.get("featured") === "true";
     const newArrival = searchParams.get("newArrival") === "true";
@@ -29,10 +30,13 @@ export async function GET(request: NextRequest) {
     const limitParam = searchParams.get("limit");
     const lastDocId = searchParams.get("lastDocId");
 
+    // Build query
     let productsQuery = collection(db, "products");
     let constraints: any[] = [];
 
+    // Apply filters
     if (category) {
+      // First, try to find category by slug
       const categoriesRef = collection(db, "categories");
       const categoryQuery = query(categoriesRef, where("slug", "==", category));
       const categorySnapshot = await getDocs(categoryQuery);
@@ -41,6 +45,7 @@ export async function GET(request: NextRequest) {
         const categoryId = categorySnapshot.docs[0].id;
         constraints.push(where("categoryId", "==", categoryId));
       } else {
+        // If not found by slug, try by ID
         constraints.push(where("categoryId", "==", category));
       }
     }
@@ -61,11 +66,14 @@ export async function GET(request: NextRequest) {
       constraints.push(where("onSale", "==", true));
     }
 
+    // Add ordering
     constraints.push(orderBy("createdAt", "desc"));
 
+    // Add pagination
     const limitValue = limitParam ? parseInt(limitParam) : 20;
     constraints.push(limit(limitValue));
 
+    // Add startAfter if lastDocId is provided
     if (lastDocId) {
       const lastDocRef = doc(db, "products", lastDocId);
       const lastDocSnap = await getDoc(lastDocRef);
@@ -75,14 +83,17 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Execute query
     const q = query(productsQuery, ...constraints);
     const querySnapshot = await getDocs(q);
 
+    // Process results
     const products: any[] = [];
 
     for (const document of querySnapshot.docs) {
       const productData = document.data();
 
+      // Fetch category data
       let category = null;
       if (productData.categoryId) {
         const categoryDoc = await getDoc(
@@ -93,6 +104,7 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      // Apply search filter in memory if needed
       if (search) {
         const searchLower = search.toLowerCase();
         const nameMatch =
@@ -110,7 +122,7 @@ export async function GET(request: NextRequest) {
           );
 
         if (!nameMatch && !descMatch && !tagsMatch) {
-          continue;
+          continue; // Skip this product if it doesn't match the search
         }
       }
 
@@ -129,37 +141,37 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-    try {
-      const { ids } = await request.json();
-  
-      if (!Array.isArray(ids) || ids.length === 0) {
-        return NextResponse.json({ error: "Product IDs are required" }, { status: 400 });
-      }
-  
-      const productsRef = collection(db, "products");
-      const q = query(productsRef, where("__name__", "in", ids));
-      const querySnapshot = await getDocs(q);
-      
-      const products: any[] = [];
-      for (const document of querySnapshot.docs) {
-        const productData = document.data();
-        let category = null;
-        if (productData.categoryId) {
-          const categoryDoc = await getDoc(doc(db, "categories", productData.categoryId));
-          if (categoryDoc.exists()) {
-            category = { id: categoryDoc.id, ...categoryDoc.data() };
-          }
-        }
-        products.push({
-          id: document.id,
-          ...productData,
-          category,
-        });
-      }
-  
-      return NextResponse.json(products);
-    } catch (error: any) {
-      console.error("Products POST API Error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+  try {
+    const { ids } = await request.json();
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json({ error: "Product IDs are required" }, { status: 400 });
     }
+
+    const productsRef = collection(db, "products");
+    const q = query(productsRef, where("__name__", "in", ids));
+    const querySnapshot = await getDocs(q);
+    
+    const products: any[] = [];
+    for (const document of querySnapshot.docs) {
+      const productData = document.data();
+      let category = null;
+      if (productData.categoryId) {
+        const categoryDoc = await getDoc(doc(db, "categories", productData.categoryId));
+        if (categoryDoc.exists()) {
+          category = { id: categoryDoc.id, ...categoryDoc.data() };
+        }
+      }
+      products.push({
+        id: document.id,
+        ...productData,
+        category,
+      });
+    }
+
+    return NextResponse.json(products);
+  } catch (error: any) {
+    console.error("Products POST API Error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
+}
