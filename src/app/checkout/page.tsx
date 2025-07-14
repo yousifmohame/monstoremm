@@ -5,11 +5,9 @@ import { motion } from 'framer-motion';
 import {
   ShoppingBag,
   CreditCard,
-  Truck,
   User,
   Phone,
   MapPin,
-  ArrowLeft,
   Check,
   AlertCircle,
 } from 'lucide-react';
@@ -20,11 +18,15 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useStore } from '@/store/useStore';
 import { useAuth } from '@/hooks/useAuth';
+import { useSiteSettings } from '@/hooks/useSiteSettings'; // <-- 1. استيراد الهوك الجديد
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { user, profile, getIdToken } = useAuth();
   const { cart, getTotalPrice, clearCart } = useStore();
+  
+  // 2. استخدام الهوك لجلب الإعدادات
+  const { settings, loading: settingsLoading } = useSiteSettings();
 
   const [isOrderComplete, setIsOrderComplete] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
@@ -65,6 +67,14 @@ export default function CheckoutPage() {
   ) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
+  
+  // 3. حساب القيم الديناميكية
+  const subtotal = getTotalPrice();
+  const shippingCost = settings?.shippingCost ?? 25.00; // Use default if settings not loaded
+  const taxRate = settings?.taxRate ?? 0.15; // Use default if settings not loaded
+  const taxAmount = subtotal * taxRate;
+  const totalAmount = subtotal + shippingCost + taxAmount;
+  const currency = settings?.currency || 'SAR';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,6 +104,12 @@ export default function CheckoutPage() {
           },
           paymentMethod: formData.paymentMethod,
           notes: formData.notes,
+          // Include calculated amounts in the order data
+          subtotal,
+          shippingAmount: shippingCost,
+          taxAmount,
+          totalAmount,
+          currency,
         }),
       });
 
@@ -182,61 +198,23 @@ export default function CheckoutPage() {
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-gray-700 font-semibold mb-2">الاسم الكامل *</label>
-                  <input
-                    type="text"
-                    name="fullName"
-                    value={formData.fullName}
-                    onChange={handleChange}
-                    className="input-field text-right"
-                    required
-                  />
+                  <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} className="input-field text-right" required />
                 </div>
                 <div>
-                  <label className="block text-gray-700 font-semibold mb-2">
-                    <Phone className="inline h-4 w-4 ml-2" /> رقم الهاتف *
-                  </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    className="input-field text-right"
-                    required
-                  />
+                  <label className="block text-gray-700 font-semibold mb-2"><Phone className="inline h-4 w-4 ml-2" /> رقم الهاتف *</label>
+                  <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="input-field text-right" required />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-gray-700 font-semibold mb-2">
-                    <MapPin className="inline h-4 w-4 ml-2" /> العنوان *
-                  </label>
-                  <input
-                    type="text"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleChange}
-                    className="input-field text-right"
-                    required
-                  />
+                  <label className="block text-gray-700 font-semibold mb-2"><MapPin className="inline h-4 w-4 ml-2" /> العنوان *</label>
+                  <input type="text" name="address" value={formData.address} onChange={handleChange} className="input-field text-right" required />
                 </div>
                 <div>
                   <label className="block text-gray-700 font-semibold mb-2">المدينة *</label>
-                  <input
-                    type="text"
-                    name="city"
-                    value={formData.city}
-                    onChange={handleChange}
-                    className="input-field text-right"
-                    required
-                  />
+                  <input type="text" name="city" value={formData.city} onChange={handleChange} className="input-field text-right" required />
                 </div>
                 <div>
                   <label className="block text-gray-700 font-semibold mb-2">الرمز البريدي</label>
-                  <input
-                    type="text"
-                    name="postalCode"
-                    value={formData.postalCode}
-                    onChange={handleChange}
-                    className="input-field text-right"
-                  />
+                  <input type="text" name="postalCode" value={formData.postalCode} onChange={handleChange} className="input-field text-right" />
                 </div>
               </div>
             </motion.div>
@@ -252,103 +230,37 @@ export default function CheckoutPage() {
               </h2>
               <div className="space-y-4">
                 <label className="block border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-primary-300 has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="cash_on_delivery"
-                      checked={formData.paymentMethod === 'cash_on_delivery'}
-                      onChange={handleChange}
-                      className="h-5 w-5 text-primary-600 focus:ring-primary-500"
-                    />
-                    <div>
-                      <p className="font-semibold text-gray-800">الدفع عند الاستلام</p>
-                      <p className="text-sm text-gray-600">ادفع نقداً عند استلام الطلب</p>
-                    </div>
-                  </div>
+                  <div className="flex items-center gap-3"><input type="radio" name="paymentMethod" value="cash_on_delivery" checked={formData.paymentMethod === 'cash_on_delivery'} onChange={handleChange} className="h-5 w-5 text-primary-600 focus:ring-primary-500" /><div><p className="font-semibold text-gray-800">الدفع عند الاستلام</p><p className="text-sm text-gray-600">ادفع نقداً عند استلام الطلب</p></div></div>
                 </label>
                 <label className="block border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-primary-300 has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="credit_card"
-                      checked={formData.paymentMethod === 'credit_card'}
-                      onChange={handleChange}
-                      className="h-5 w-5 text-primary-600 focus:ring-primary-500"
-                    />
-                    <div>
-                      <p className="font-semibold text-gray-800">بطاقة ائتمانية (محاكاة)</p>
-                      <p className="text-sm text-gray-600">سيتم إنشاء الطلب مباشرة</p>
-                    </div>
-                  </div>
+                  <div className="flex items-center gap-3"><input type="radio" name="paymentMethod" value="credit_card" checked={formData.paymentMethod === 'credit_card'} onChange={handleChange} className="h-5 w-5 text-primary-600 focus:ring-primary-500" /><div><p className="font-semibold text-gray-800">بطاقة ائتمانية (محاكاة)</p><p className="text-sm text-gray-600">سيتم إنشاء الطلب مباشرة</p></div></div>
                 </label>
               </div>
             </motion.div>
 
-            <motion.button
-              type="submit"
-              disabled={isProcessing}
-              className="w-full btn-primary text-lg py-4 flex items-center justify-center"
-            >
-              {isProcessing ? (
-                <div className="loading-spinner"></div>
-              ) : (
-                'تأكيد الطلب الآن'
-              )}
+            <motion.button type="submit" disabled={isProcessing || settingsLoading} className="w-full btn-primary text-lg py-4 flex items-center justify-center">
+              {isProcessing ? (<div className="loading-spinner"></div>) : ('تأكيد الطلب الآن')}
             </motion.button>
 
-            {errorMessage && (
-              <div className="mt-4 text-red-600 text-center">
-                <AlertCircle className="h-5 w-5 inline-block mr-2" />
-                {errorMessage}
-              </div>
-            )}
+            {errorMessage && (<div className="mt-4 text-red-600 text-center"><AlertCircle className="h-5 w-5 inline-block mr-2" />{errorMessage}</div>)}
           </div>
 
           <div className="lg:col-span-1">
             <div className="anime-card p-6 sticky top-8">
               <h2 className="text-xl font-bold text-gray-800 mb-6">ملخص الطلب</h2>
-              <div className="space-y-4 mb-6">
+              <div className="space-y-4 mb-6 max-h-60 overflow-y-auto pr-2">
                 {cart.map((item) => (
                   <div key={item.id} className="flex gap-3">
-                    <Image
-                      src={item.image}
-                      alt={item.name}
-                      width={60}
-                      height={60}
-                      className="w-16 h-16 object-cover rounded-lg"
-                    />
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-800 text-sm">{item.name}</h3>
-                      <p className="text-sm text-gray-600">
-                        {item.quantity} × {item.price} ريال
-                      </p>
-                    </div>
+                    <Image src={item.image} alt={item.name} width={60} height={60} className="w-16 h-16 object-cover rounded-lg" />
+                    <div className="flex-1"><h3 className="font-semibold text-gray-800 text-sm">{item.name}</h3><p className="text-sm text-gray-600">{item.quantity} × {item.price.toFixed(2)} {currency}</p></div>
                   </div>
                 ))}
               </div>
               <div className="border-t border-gray-200 pt-4 space-y-3">
-                <div className="flex justify-between">
-                  <span>المجموع الفرعي:</span>
-                  <span className="font-semibold">{getTotalPrice().toFixed(2)} ريال</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>الشحن:</span>
-                  <span className="font-semibold">25.00 ريال</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>الضريبة (15%):</span>
-                  <span className="font-semibold">
-                    {(getTotalPrice() * 0.15).toFixed(2)} ريال
-                  </span>
-                </div>
-                <div className="flex justify-between pt-3 border-t border-gray-200">
-                  <span className="font-bold">المجموع:</span>
-                  <span className="font-bold text-primary-600">
-                    {(getTotalPrice() + 25 + getTotalPrice() * 0.15).toFixed(2)} ريال
-                  </span>
-                </div>
+                <div className="flex justify-between"><span>المجموع الفرعي:</span><span className="font-semibold">{subtotal.toFixed(2)} {currency}</span></div>
+                <div className="flex justify-between"><span>الشحن:</span><span className="font-semibold">{shippingCost.toFixed(2)} {currency}</span></div>
+                <div className="flex justify-between"><span>الضريبة ({(taxRate * 100).toFixed(0)}%):</span><span className="font-semibold">{taxAmount.toFixed(2)} {currency}</span></div>
+                <div className="flex justify-between pt-3 border-t border-gray-200"><span className="font-bold">المجموع:</span><span className="font-bold text-primary-600">{totalAmount.toFixed(2)} {currency}</span></div>
               </div>
             </div>
           </div>
