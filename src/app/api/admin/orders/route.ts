@@ -1,6 +1,7 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
-export const dynamic = 'force-dynamic';
 
 // Helper function to verify that the user is an admin
 async function verifyAdmin(request: NextRequest) {
