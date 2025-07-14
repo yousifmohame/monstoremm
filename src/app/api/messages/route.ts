@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-// **Major Fix: Import FieldValue from our setup file**
 import { adminDb, FieldValue } from "@/lib/firebase-admin";
 
 export async function POST(request: NextRequest) {
@@ -11,26 +10,33 @@ export async function POST(request: NextRequest) {
     }
 
     let currentConversationId = conversationId;
+    let userName = 'زائر';
 
-    // If there is no conversation, create a new one
     if (!currentConversationId) {
       const userRef = adminDb.collection('users').doc(userId);
       const userDoc = await userRef.get();
       
+      if (userDoc.exists) {
+        userName = userDoc.data()?.fullName || userName;
+      }
+      
       const conversationData = {
         userId: userId,
-        userName: userDoc.exists ? userDoc.data()?.fullName : 'Visitor',
-        userEmail: userDoc.exists ? userDoc.data()?.email : 'Not registered',
+        userName: userName,
+        userEmail: userDoc.exists ? userDoc.data()?.email : 'غير مسجل',
         lastMessage: message,
         lastMessageAt: FieldValue.serverTimestamp(),
         isReadByAdmin: false,
       };
-      // **Fix: Use .add() to create a new document**
       const conversationRef = await adminDb.collection('conversations').add(conversationData);
       currentConversationId = conversationRef.id;
+    } else {
+        const convoDoc = await adminDb.collection('conversations').doc(currentConversationId).get();
+        if (convoDoc.exists) {
+            userName = convoDoc.data()?.userName || userName;
+        }
     }
 
-    // Add the message to the conversation
     const messageRef = adminDb.collection('conversations').doc(currentConversationId).collection('messages');
     await messageRef.add({
       senderId: userId,
@@ -38,11 +44,20 @@ export async function POST(request: NextRequest) {
       timestamp: FieldValue.serverTimestamp(),
     });
 
-    // Update the last message in the conversation
     await adminDb.collection('conversations').doc(currentConversationId).update({
       lastMessage: message,
       lastMessageAt: FieldValue.serverTimestamp(),
       isReadByAdmin: false,
+    });
+
+    // **الإضافة الجديدة: إنشاء إشعار للمدير**
+    const notificationRef = adminDb.collection("notifications").doc();
+    await notificationRef.set({
+        type: 'NEW_MESSAGE',
+        message: `رسالة جديدة من ${userName}: "${message.substring(0, 30)}..."`,
+        link: `/admin/messages`, // رابط لصفحة الرسائل
+        isRead: false,
+        createdAt: FieldValue.serverTimestamp(),
     });
 
     return NextResponse.json({ success: true, conversationId: currentConversationId });
