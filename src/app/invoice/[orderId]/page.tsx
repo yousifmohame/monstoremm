@@ -1,4 +1,3 @@
-// src/app/invoice/[orderId]/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -114,6 +113,15 @@ export default function InvoicePage({ params }: { params: { orderId: string } })
     );
   }
 
+  const safeOrder = {
+    ...order,
+    subtotal: order.subtotal || 0,
+    shippingAmount: order.shippingAmount || 0,
+    taxAmount: order.taxAmount || 0,
+    totalAmount: order.totalAmount || 0,
+    items: order.items || [],
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -158,18 +166,18 @@ export default function InvoicePage({ params }: { params: { orderId: string } })
             <div className="text-right">
               <h2 className="text-3xl font-bold text-gray-800 mb-4">فاتورة</h2>
               <div className="space-y-2">
-                <p><span className="font-semibold">رقم الفاتورة:</span> {order.orderNumber}</p>
+                <p><span className="font-semibold">رقم الفاتورة:</span> {safeOrder.orderNumber}</p>
                 <p><span className="font-semibold">تاريخ الإصدار:</span>{' '}
-                  {new Date(order.createdAt).toLocaleDateString('ar-SA')}
+                  {new Date(safeOrder.createdAt).toLocaleDateString('ar-SA')}
                 </p>
-                <p><span className="font-semibold">حالة الدفع:</span> 
+                <p><span className="font-semibold">حالة الدفع:</span>
                   <span className={`mr-2 px-2 py-1 rounded text-sm ${
-                    order.paymentStatus === 'PAID' ? 'bg-green-100 text-green-600' : 
-                    order.paymentStatus === 'FAILED' ? 'bg-red-100 text-red-600' : 
+                    safeOrder.paymentStatus === 'PAID' ? 'bg-green-100 text-green-600' :
+                    safeOrder.paymentStatus === 'FAILED' ? 'bg-red-100 text-red-600' :
                     'bg-yellow-100 text-yellow-600'
                   }`}>
-                    {order.paymentStatus === 'PAID' ? 'مدفوع' : 
-                     order.paymentStatus === 'FAILED' ? 'فشل الدفع' : 
+                    {safeOrder.paymentStatus === 'PAID' ? 'مدفوع' :
+                     safeOrder.paymentStatus === 'FAILED' ? 'فشل الدفع' :
                      'قيد الانتظار'}
                   </span>
                 </p>
@@ -182,17 +190,17 @@ export default function InvoicePage({ params }: { params: { orderId: string } })
             <div>
               <h3 className="text-xl font-bold text-gray-800 mb-4">معلومات العميل</h3>
               <div className="space-y-2 text-gray-600">
-                <p><span className="font-semibold">الاسم:</span> {order.shippingAddress.fullName}</p>
-                <p><span className="font-semibold">الهاتف:</span> {order.shippingAddress.phone}</p>
-                <p><span className="font-semibold">المدينة:</span> {order.shippingAddress.city}</p>
-                <p><span className="font-semibold">الرمز البريدي:</span> {order.shippingAddress.postalCode}</p>
+                <p><span className="font-semibold">الاسم:</span> {safeOrder.shippingAddress.fullName}</p>
+                <p><span className="font-semibold">الهاتف:</span> {safeOrder.shippingAddress.phone}</p>
+                <p><span className="font-semibold">المدينة:</span> {safeOrder.shippingAddress.city}</p>
+                <p><span className="font-semibold">الرمز البريدي:</span> {safeOrder.shippingAddress.postalCode}</p>
               </div>
             </div>
             <div>
               <h3 className="text-xl font-bold text-gray-800 mb-4">عنوان التوصيل</h3>
               <div className="space-y-2 text-gray-600">
-                <p>{order.shippingAddress.address}</p>
-                <p>{order.shippingAddress.city}, {order.shippingAddress.postalCode}</p>
+                <p>{safeOrder.shippingAddress.address}</p>
+                <p>{safeOrder.shippingAddress.city}, {safeOrder.shippingAddress.postalCode}</p>
               </div>
             </div>
           </div>
@@ -211,7 +219,7 @@ export default function InvoicePage({ params }: { params: { orderId: string } })
                   </tr>
                 </thead>
                 <tbody>
-                  {order.items.map((item, index) => (
+                  {safeOrder.items.map((item, index) => (
                     <tr key={index}>
                       <td className="border border-gray-200 p-3">
                         <div className="flex items-center gap-3">
@@ -244,26 +252,26 @@ export default function InvoicePage({ params }: { params: { orderId: string } })
               <div className="space-y-3 p-6 bg-gray-50 rounded-lg">
                 <div className="flex justify-between">
                   <span>المجموع الفرعي:</span>
-                  <span>{order.subtotal.toFixed(2)} ريال</span>
+                  <span>{safeOrder.subtotal.toFixed(2)} ريال</span>
                 </div>
                 <div className="flex justify-between">
                   <span>الشحن:</span>
-                  <span>{order.shippingAmount.toFixed(2)} ريال</span>
+                  <span>{safeOrder.shippingAmount.toFixed(2)} ريال</span>
                 </div>
                 <div className="flex justify-between">
                   <span>ضريبة القيمة المضافة (15%):</span>
-                  <span>{order.taxAmount.toFixed(2)} ريال</span>
+                  <span>{safeOrder.taxAmount.toFixed(2)} ريال</span>
                 </div>
-                {order.discountAmount > 0 && (
+                {safeOrder.discountAmount > 0 && (
                   <div className="flex justify-between text-green-600">
                     <span>الخصم:</span>
-                    <span>-{order.discountAmount.toFixed(2)} ريال</span>
+                    <span>-{safeOrder.discountAmount.toFixed(2)} ريال</span>
                   </div>
                 )}
                 <div className="border-t border-gray-300 pt-3">
                   <div className="flex justify-between text-xl font-bold">
                     <span>المجموع الإجمالي:</span>
-                    <span className="text-primary-600">{order.totalAmount.toFixed(2)} ريال</span>
+                    <span className="text-primary-600">{safeOrder.totalAmount.toFixed(2)} ريال</span>
                   </div>
                 </div>
               </div>
@@ -276,32 +284,32 @@ export default function InvoicePage({ params }: { params: { orderId: string } })
             <div className="grid md:grid-cols-2 gap-8">
               <div>
                 <p><span className="font-semibold">طريقة الدفع:</span>{' '}
-                  {order.paymentMethod === 'credit_card' ? 'بطاقة ائتمانية' : 
-                   order.paymentMethod === 'cash_on_delivery' ? 'الدفع عند الاستلام' : 
-                   order.paymentMethod}
+                  {safeOrder.paymentMethod === 'credit_card' ? 'بطاقة ائتمانية' :
+                   safeOrder.paymentMethod === 'cash_on_delivery' ? 'الدفع عند الاستلام' :
+                   safeOrder.paymentMethod}
                 </p>
-                <p><span className="font-semibold">حالة الدفع:</span> 
-                  <span className={`mr-2 ${order.paymentStatus === 'PAID' ? 'text-green-600' : 
-                    order.paymentStatus === 'FAILED' ? 'text-red-600' : 'text-yellow-600'}`}>
-                    {order.paymentStatus === 'PAID' ? 'مدفوع' : 
-                     order.paymentStatus === 'FAILED' ? 'فشل الدفع' : 
+                <p><span className="font-semibold">حالة الدفع:</span>
+                  <span className={`mr-2 ${safeOrder.paymentStatus === 'PAID' ? 'text-green-600' :
+                    safeOrder.paymentStatus === 'FAILED' ? 'text-red-600' : 'text-yellow-600'}`}>
+                    {safeOrder.paymentStatus === 'PAID' ? 'مدفوع' :
+                     safeOrder.paymentStatus === 'FAILED' ? 'فشل الدفع' :
                      'قيد الانتظار'}
                   </span>
                 </p>
               </div>
-              {order.trackingNumber && (
+              {safeOrder.trackingNumber && (
                 <div>
-                  <p><span className="font-semibold">رقم التتبع:</span> {order.trackingNumber}</p>
-                  <p><span className="font-semibold">حالة الطلب:</span> 
+                  <p><span className="font-semibold">رقم التتبع:</span> {safeOrder.trackingNumber}</p>
+                  <p><span className="font-semibold">حالة الطلب:</span>
                     <span className={`mr-2 ${
-                      order.status === 'DELIVERED' ? 'text-green-600' : 
-                      order.status === 'CANCELLED' ? 'text-red-600' : 
+                      safeOrder.status === 'DELIVERED' ? 'text-green-600' :
+                      safeOrder.status === 'CANCELLED' ? 'text-red-600' :
                       'text-yellow-600'
                     }`}>
-                      {order.status === 'DELIVERED' ? 'تم التسليم' : 
-                       order.status === 'SHIPPED' ? 'تم الشحن' : 
-                       order.status === 'PROCESSING' ? 'قيد المعالجة' : 
-                       order.status === 'CANCELLED' ? 'ملغى' : 
+                      {safeOrder.status === 'DELIVERED' ? 'تم التسليم' :
+                       safeOrder.status === 'SHIPPED' ? 'تم الشحن' :
+                       safeOrder.status === 'PROCESSING' ? 'قيد المعالجة' :
+                       safeOrder.status === 'CANCELLED' ? 'ملغى' :
                        'قيد الانتظار'}
                     </span>
                   </p>
