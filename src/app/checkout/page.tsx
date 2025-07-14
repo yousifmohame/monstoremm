@@ -22,13 +22,11 @@ import { useSiteSettings } from '@/hooks/useSiteSettings';
 
 export default function CheckoutPage() {
   const router = useRouter();
+  // **THE FIX**: Get the getIdToken function from the auth hook
   const { user, profile, getIdToken } = useAuth();
-  const { cart, getTotalPrice, clearCart } = useStore();
-
+  const { cart, getTotalPrice } = useStore();
   const { settings, loading: settingsLoading } = useSiteSettings();
 
-  const [isOrderComplete, setIsOrderComplete] = useState(false);
-  const [orderNumber, setOrderNumber] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -38,7 +36,7 @@ export default function CheckoutPage() {
     address: '',
     city: '',
     postalCode: '',
-    paymentMethod: 'cash_on_delivery',
+    paymentMethod: 'fatora',
     notes: '',
   });
 
@@ -56,10 +54,10 @@ export default function CheckoutPage() {
   }, [profile]);
 
   useEffect(() => {
-    if (cart.length === 0 && !isOrderComplete) {
+    if (cart.length === 0) {
       router.push('/products');
     }
-  }, [cart.length, isOrderComplete, router]);
+  }, [cart.length, router]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -83,14 +81,16 @@ export default function CheckoutPage() {
       if (!user) {
         throw new Error('يجب تسجيل الدخول أولاً');
       }
-
+      
+      // **THE FIX**: Get the token before sending the request
       const idToken = await getIdToken(true);
 
       const response = await fetch('/api/checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`,
+          // **THE FIX**: Send the token in the Authorization header
+          'Authorization': `Bearer ${idToken}`,
         },
         body: JSON.stringify({
           shippingAddress: {
@@ -102,26 +102,26 @@ export default function CheckoutPage() {
           },
           paymentMethod: formData.paymentMethod,
           notes: formData.notes,
-          subtotal,
-          shippingAmount: shippingCost,
-          taxAmount,
-          totalAmount,
-          currency,
+          items: cart,
+          totalAmount: totalAmount,
+          currency: currency
         }),
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'فشل في إنشاء الطلب.');
+        throw new Error(result.error || 'فشل في إنشاء الطلب.');
       }
 
-      const orderData = await response.json();
-      await clearCart();
-      setIsOrderComplete(true);
-      setOrderNumber(orderData.orderNumber);
+      if (result.paymentUrl) {
+        window.location.href = result.paymentUrl;
+      } else {
+        throw new Error('لم يتم استلام رابط الدفع.');
+      }
+
     } catch (error: any) {
       setErrorMessage(error.message);
-    } finally {
       setIsProcessing(false);
     }
   };
@@ -135,39 +135,6 @@ export default function CheckoutPage() {
           <Link href="/auth/login" className="btn-primary mt-4">
             تسجيل الدخول
           </Link>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
-
-  if (isOrderComplete) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Header />
-        <div className="container-custom py-20">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg p-8 text-center"
-          >
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Check className="h-10 w-10 text-green-600" />
-            </div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-4">تم إنشاء الطلب بنجاح!</h1>
-            <p className="text-xl text-gray-600 mb-6">رقم الطلب الخاص بك هو:</p>
-            <div className="bg-gray-100 py-4 px-6 rounded-lg mb-8">
-              <p className="text-2xl font-bold text-primary-600">{orderNumber}</p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/orders">
-                <button className="btn-primary">عرض طلباتي</button>
-              </Link>
-              <Link href="/products">
-                <button className="btn-outline">متابعة التسوق</button>
-              </Link>
-            </div>
-          </motion.div>
         </div>
         <Footer />
       </div>
@@ -216,27 +183,8 @@ export default function CheckoutPage() {
               </div>
             </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="anime-card p-8"
-            >
-              <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                <CreditCard className="h-6 w-6 text-primary-600" /> طريقة الدفع
-              </h2>
-              <div className="space-y-4">
-                <label className="block border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-primary-300 has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50 transition-colors">
-                  <div className="flex items-center gap-3"><input type="radio" name="paymentMethod" value="cash_on_delivery" checked={formData.paymentMethod === 'cash_on_delivery'} onChange={handleChange} className="h-5 w-5 text-primary-600 focus:ring-primary-500" /><div><p className="font-semibold text-gray-800">الدفع عند الاستلام</p><p className="text-sm text-gray-600">ادفع نقداً عند استلام الطلب</p></div></div>
-                </label>
-                <label className="block border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-primary-300 has-[:checked]:border-primary-500 has-[:checked]:bg-primary-50 transition-colors">
-                  <div className="flex items-center gap-3"><input type="radio" name="paymentMethod" value="credit_card" checked={formData.paymentMethod === 'credit_card'} onChange={handleChange} className="h-5 w-5 text-primary-600 focus:ring-primary-500" /><div><p className="font-semibold text-gray-800">بطاقة ائتمانية (محاكاة)</p><p className="text-sm text-gray-600">سيتم إنشاء الطلب مباشرة</p></div></div>
-                </label>
-              </div>
-            </motion.div>
-
             <motion.button type="submit" disabled={isProcessing || settingsLoading} className="w-full btn-primary text-lg py-4 flex items-center justify-center">
-              {isProcessing ? (<div className="loading-spinner"></div>) : ('تأكيد الطلب الآن')}
+              {isProcessing ? (<div className="loading-spinner"></div>) : ('الانتقال إلى الدفع الآمن')}
             </motion.button>
 
             {errorMessage && (<div className="mt-4 text-red-600 text-center"><AlertCircle className="h-5 w-5 inline-block mr-2" />{errorMessage}</div>)}
