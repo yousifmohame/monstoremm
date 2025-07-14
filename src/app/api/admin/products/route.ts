@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 
-// Helper function to verify that the user is an admin
+export const dynamic = 'force-dynamic'; // This line is the fix
+
 async function verifyAdmin(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) throw new Error("Unauthorized");
@@ -11,7 +12,6 @@ async function verifyAdmin(request: NextRequest) {
   if (!userDoc.exists || !userDoc.data()?.isAdmin) throw new Error("Forbidden: Not an admin");
 }
 
-// GET: Fetch all products with filtering options
 export async function GET(request: NextRequest) {
   try {
     await verifyAdmin(request);
