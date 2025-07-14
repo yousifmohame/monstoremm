@@ -137,3 +137,39 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export async function POST(request: NextRequest) {
+  try {
+    const { ids } = await request.json();
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json({ error: "Product IDs are required" }, { status: 400 });
+    }
+
+    const productsRef = collection(db, "products");
+    const q = query(productsRef, where("__name__", "in", ids));
+    const querySnapshot = await getDocs(q);
+    
+    const products: any[] = [];
+    for (const document of querySnapshot.docs) {
+      const productData = document.data();
+      let category = null;
+      if (productData.categoryId) {
+        const categoryDoc = await getDoc(doc(db, "categories", productData.categoryId));
+        if (categoryDoc.exists()) {
+          category = { id: categoryDoc.id, ...categoryDoc.data() };
+        }
+      }
+      products.push({
+        id: document.id,
+        ...productData,
+        category,
+      });
+    }
+
+    return NextResponse.json(products);
+  } catch (error: any) {
+    console.error("Products POST API Error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
