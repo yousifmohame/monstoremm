@@ -115,14 +115,23 @@ export const useAdminProducts = () => {
     }, [fetchProducts]);
 
     const deleteProduct = useCallback(async (productId: string) => {
-        const idToken = await auth.currentUser?.getIdToken(true);
-        if (!idToken) throw new Error("Authentication required");
-        const response = await fetch(`/api/admin/products/${productId}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${idToken}` },
-        });
-        if (!response.ok) throw new Error('Failed to delete product');
-        setProducts(prev => prev.filter(p => p.id !== productId));
+        setLoading(true);
+        setError(null);
+        try {
+            const idToken = await auth.currentUser?.getIdToken(true);
+            if (!idToken) throw new Error("Authentication required");
+            const response = await fetch(`/api/admin/products/${productId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${idToken}` },
+            });
+            if (!response.ok) throw new Error('Failed to delete product');
+            setProducts(prev => prev.filter(p => p.id !== productId));
+        } catch (err: any) {
+            setError(err.message);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
     return { products, product, loading, error, fetchProducts, fetchProductById, addProduct, updateProduct, deleteProduct };
