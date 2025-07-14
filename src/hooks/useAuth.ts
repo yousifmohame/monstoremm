@@ -201,31 +201,27 @@ export const useAuth = () => {
 
   // **NEW FUNCTION FOR FORGOT PASSWORD**
   const sendPasswordReset = async (email: string) => {
-  try {
-    await sendPasswordResetEmail(auth, email, {
-      url: 'https://monstoremm.vercel.app/auth/login', // URL للرجوع بعد إعادة التعيين
-      handleCodeInApp: false // أو true إذا كنت تريد التعامل مع الرمز في التطبيق
-    });
-    console.log('Password reset email sent successfully');
-  } catch (error: any) {
-    console.error('Password reset error:', error);
-    let errorMessage = 'حدث خطأ أثناء إرسال رابط إعادة التعيين';
-    
-    switch (error.code) {
-      case 'auth/user-not-found':
-        errorMessage = 'لا يوجد حساب مرتبط بهذا البريد الإلكتروني';
-        break;
-      case 'auth/invalid-email':
-        errorMessage = 'عنوان البريد الإلكتروني غير صالح';
-        break;
-      case 'auth/too-many-requests':
-        errorMessage = 'لقد طلبت العديد من محاولات إعادة التعيين، يرجى الانتظار قبل المحاولة مرة أخرى';
-        break;
+    try {
+      // **THE FIX IS HERE**: Call our new API route instead of the Firebase client SDK
+      const response = await fetch('/api/auth/send-reset-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'فشل إرسال البريد');
+      }
+
+    } catch (error: any) {
+      console.error("Password reset error:", error);
+      throw new Error(error.message || "حدث خطأ أثناء إرسال رابط إعادة التعيين.");
     }
-    
-    throw new Error(errorMessage);
-  }
-};
+  };
 
   const changeUserPassword = async (
     currentPassword: string,
