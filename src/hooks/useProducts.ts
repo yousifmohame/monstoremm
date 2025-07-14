@@ -362,6 +362,31 @@ export const useProducts = () => {
       setLoading(false);
     }
   };
+  
+  const fetchProductsByIds = useCallback(async (ids: string[]): Promise<Product[]> => {
+    if (ids.length === 0) return [];
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ids }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch products by IDs');
+      }
+      const products = await response.json();
+      return products;
+    } catch (err: any) {
+      setError(err.message);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   return {
     products,
@@ -372,5 +397,6 @@ export const useProducts = () => {
     addProduct,
     updateProduct,
     deleteProduct,
+    fetchProductsByIds,
   };
 };
