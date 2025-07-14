@@ -23,6 +23,7 @@ export const useAdminSettings = () => {
         setLoading(true);
         setError(null);
         try {
+            // This API route does not require authentication to fetch public settings
             const response = await fetch('/api/settings');
             if (!response.ok) throw new Error('Failed to fetch settings');
             const data = await response.json();
@@ -41,7 +42,8 @@ export const useAdminSettings = () => {
             const idToken = await auth.currentUser?.getIdToken(true);
             if (!idToken) throw new Error("Authentication required");
 
-            const response = await fetch('/api/settings', {
+            // Use the new admin-specific API route for updating
+            const response = await fetch('/api/admin/settings', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -49,13 +51,16 @@ export const useAdminSettings = () => {
                 },
                 body: JSON.stringify(newSettings),
             });
-            if (!response.ok) throw new Error((await response.json()).error || 'Failed to update settings');
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to update settings');
+            }
             
-            // تحديث الحالة المحلية فورًا لتحسين تجربة المستخدم
+            // Update local state immediately for a better user experience
             setSettings(prev => prev ? { ...prev, ...newSettings } : newSettings as SiteSettings);
         } catch (err: any) {
             setError(err.message);
-            throw err;
+            throw err; // Re-throw the error to be handled in the component
         } finally {
             setLoading(false);
         }
