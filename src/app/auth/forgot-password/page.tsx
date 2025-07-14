@@ -6,8 +6,10 @@ import { Mail, ArrowRight, AlertCircle, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function ForgotPasswordPage() {
+  const { sendPasswordReset } = useAuth();
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -19,12 +21,7 @@ export default function ForgotPasswordPage() {
     setError('');
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // In a real app, you would call your API to send a reset password email
-      console.log('Reset password email sent to:', email);
-      
+      await sendPasswordReset(email);
       setIsSubmitted(true);
     } catch (error: any) {
       console.error('Error sending reset password email:', error);
