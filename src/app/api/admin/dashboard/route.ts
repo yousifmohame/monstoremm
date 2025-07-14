@@ -1,7 +1,8 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 // No need to import functions like query, collection here
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
-export const dynamic = 'force-dynamic';
+
 
 async function verifyAdmin(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
