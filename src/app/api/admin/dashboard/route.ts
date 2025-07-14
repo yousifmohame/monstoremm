@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+// No need to import functions like query, collection here
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
-
-export const dynamic = 'force-dynamic'; // This line is the fix
+export const dynamic = 'force-dynamic';
 
 async function verifyAdmin(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
   try {
     await verifyAdmin(request);
 
+    // Fetch data from different collections in parallel to improve performance
     const ordersPromise = adminDb.collection('orders').get();
     const usersPromise = adminDb.collection('users').get();
     const productsPromise = adminDb.collection('products').get();
@@ -27,6 +28,7 @@ export async function GET(request: NextRequest) {
       productsPromise,
     ]);
 
+    // Calculate statistics
     const totalRevenue = ordersSnapshot.docs.reduce((sum, doc) => sum + (doc.data().totalAmount || 0), 0);
     const totalSales = ordersSnapshot.size;
     const totalUsers = usersSnapshot.size;
@@ -34,6 +36,7 @@ export async function GET(request: NextRequest) {
     const pendingOrders = ordersSnapshot.docs.filter(doc => ['PENDING', 'PROCESSING'].includes(doc.data().status)).length;
     const outOfStockProducts = productsSnapshot.docs.filter(doc => doc.data().stock === 0).length;
 
+    // **Major Fix: Use the correct syntax for Admin SDK**
     const recentProductsSnapshot = await adminDb.collection('products')
       .orderBy('createdAt', 'desc')
       .limit(5)
@@ -56,6 +59,7 @@ export async function GET(request: NextRequest) {
 
     const newReviewsSnapshot = await adminDb.collection('reviews').where('isReadByAdmin', '==', false).get();
     const newReviews = newReviewsSnapshot.size;
+
 
     return NextResponse.json({
       totalRevenue,
