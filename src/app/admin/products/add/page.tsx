@@ -325,6 +325,7 @@ export default function AddProductPage() {
                 <div className="mt-4 space-y-2">
                   <label className="flex items-center gap-2"><input type="checkbox" name="featured" checked={formData.featured} onChange={handleChange}/>منتج مميز</label>
                   <label className="flex items-center gap-2"><input type="checkbox" name="newArrival" checked={formData.newArrival} onChange={handleChange}/>وصل حديثاً</label>
+                  <label className="flex items-center gap-2"><input type="checkbox" name="onSale" checked={formData.onSale} onChange={handleChange}/>في التخفيضات</label>
                   <label className="flex items-center gap-2"><input type="checkbox" name="bestSeller" checked={formData.bestSeller} onChange={handleChange}/>الأكثر مبيعاً</label>
                 </div>
               </motion.div>
