@@ -1,23 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth, adminDb } from '@/lib/firebase-admin';
+import { adminAuth, adminDb, adminStorage } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { ProductImage } from '@/hooks/useProducts';
 
-// Helper to verify admin
+// Helper function to verify admin user
 async function verifyAdmin(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     throw new Error('Unauthorized: No token provided');
   }
-  
   const token = authHeader.split('Bearer ')[1];
   try {
     const decodedToken = await adminAuth.verifyIdToken(token);
     const userDoc = await adminDb.collection('users').doc(decodedToken.uid).get();
-    
     if (!userDoc.exists || !userDoc.data()?.isAdmin) {
       throw new Error('Forbidden: Not an admin');
     }
-    
     return decodedToken.uid;
   } catch (error) {
     console.error('Admin verification error:', error);
@@ -25,159 +23,137 @@ async function verifyAdmin(request: NextRequest) {
   }
 }
 
-// GET /api/admin/products/[id]
+// GET a single product by ID
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     await verifyAdmin(request);
-    const productId = params.id;
-
-    if (!productId) {
-      return NextResponse.json(
-        { error: 'Product ID is required' }, 
-        { status: 400 }
-      );
-    }
-
-    const productRef = adminDb.collection('products').doc(productId);
+    const productRef = adminDb.collection('products').doc(params.id);
     const docSnap = await productRef.get();
 
     if (!docSnap.exists) {
-      return NextResponse.json(
-        { error: 'Product not found' }, 
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
     const productData = docSnap.data();
     return NextResponse.json({ 
       id: docSnap.id, 
       ...productData,
-      // Convert Firestore Timestamps to ISO strings
       createdAt: productData?.createdAt?.toDate().toISOString(),
       updatedAt: productData?.updatedAt?.toDate().toISOString()
     });
   } catch (error: any) {
-    console.error('Admin Get Product API Error:', error.message);
-    return NextResponse.json(
-      { error: error.message }, 
-      { status: error.message.includes('Unauthorized') ? 401 : 
-        error.message.includes('Forbidden') ? 403 : 500 }
-    );
+    return NextResponse.json({ error: error.message }, { status: error.message.includes('Forbidden') ? 403 : 500 });
   }
 }
 
-// PUT /api/admin/products/[id]
+// UPDATE a product by ID
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const userId = await verifyAdmin(request);
+    const adminUid = await verifyAdmin(request);
     const productId = params.id;
-    const updateData = await request.json();
+    const formData = await request.formData();
 
-    if (!productId) {
-      return NextResponse.json(
-        { error: 'Product ID is required' }, 
-        { status: 400 }
-      );
-    }
-
-    // Validate required fields
-    if (!updateData.name || !updateData.nameAr || !updateData.categoryId) {
-      return NextResponse.json(
-        { error: 'Name (Arabic and English) and category are required' }, 
-        { status: 400 }
-      );
-    }
+    const productData = JSON.parse(formData.get('productData') as string);
+    const imagesToDelete = JSON.parse(formData.get('imagesToDelete') as string || '[]') as string[];
+    const newImageFiles = formData.getAll('newImages') as File[];
 
     const productRef = adminDb.collection('products').doc(productId);
-    
-    // First check if product exists
-    const docSnap = await productRef.get();
-    if (!docSnap.exists) {
-      return NextResponse.json(
-        { error: 'Product not found' }, 
-        { status: 404 }
-      );
+    const productDoc = await productRef.get();
+    if (!productDoc.exists) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
-    // Prepare update data
+    const currentImages = productDoc.data()?.images || [];
+
+    // 1. Delete old images from Storage
+    if (imagesToDelete.length > 0) {
+      await Promise.all(imagesToDelete.map(async (url) => {
+        if (typeof url === 'string' && url.includes('firebasestorage.googleapis.com')) {
+            try {
+              const path = new URL(url).pathname.split('/o/')[1].split('?')[0];
+              await adminStorage.file(decodeURIComponent(path)).delete();
+            } catch (e) {
+              console.error(`Failed to delete image ${url}:`, e);
+            }
+        }
+      }));
+    }
+
+    // 2. Upload new images
+    const uploadedUrls: ProductImage[] = await Promise.all(
+      newImageFiles.map(async (file, index) => {
+        const imageRef = adminStorage.file(`products/${productId}/${Date.now()}-${file.name}`);
+        const buffer = Buffer.from(await file.arrayBuffer());
+        await imageRef.save(buffer, { metadata: { contentType: file.type } });
+        await imageRef.makePublic();
+        return {
+          imageUrl: imageRef.publicUrl(),
+          altText: productData.nameAr || 'Product image',
+          sortOrder: currentImages.length + index,
+          isPrimary: false,
+        };
+      })
+    );
+
+    // 3. Combine old and new images for Firestore
+    let finalImages: ProductImage[] = currentImages.filter((img: ProductImage) => !imagesToDelete.includes(img.imageUrl));
+    finalImages = [...finalImages, ...uploadedUrls];
+    
+    // **THE FIX IS HERE**: Explicitly type the 'img' parameter
+    finalImages.forEach((img: ProductImage, index) => {
+        img.sortOrder = index;
+        img.isPrimary = index === 0;
+    });
+
+    // 4. Update Firestore document
     const dataToUpdate = {
-      ...updateData,
+      ...productData,
+      images: finalImages,
       updatedAt: FieldValue.serverTimestamp(),
-      updatedBy: userId
+      updatedBy: adminUid,
     };
-
-    // Remove fields that shouldn't be updated
-    delete dataToUpdate.id;
-    delete dataToUpdate.createdAt;
-    delete dataToUpdate.createdBy;
-
+    
     await productRef.update(dataToUpdate);
 
-    // Get updated document to return
-    const updatedDoc = await productRef.get();
-    const updatedData = updatedDoc.data();
+    return NextResponse.json({ success: true, message: 'Product updated successfully' });
 
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Product updated successfully',
-      product: {
-        id: updatedDoc.id,
-        ...updatedData,
-        createdAt: updatedData?.createdAt?.toDate().toISOString(),
-        updatedAt: updatedData?.updatedAt?.toDate().toISOString()
-      }
-    });
   } catch (error: any) {
-    console.error('Update Product Error:', error.message);
-    return NextResponse.json(
-      { error: error.message }, 
-      { status: error.message.includes('Unauthorized') ? 401 : 
-        error.message.includes('Forbidden') ? 403 : 500 }
-    );
+    console.error('Update Product API Error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-// DELETE /api/admin/products/[id]
+// DELETE a product by ID
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
-  try {
-    const userId = await verifyAdmin(request);
-    const productId = params.id;
-
-    if (!productId) {
-      return NextResponse.json(
-        { error: 'Product ID is required' }, 
-        { status: 400 }
-      );
-    }
-
-    const productRef = adminDb.collection('products').doc(productId);
+    try {
+        await verifyAdmin(request);
+        const productId = params.id;
+        const productRef = adminDb.collection('products').doc(productId);
+        
+        const docSnap = await productRef.get();
+        if (!docSnap.exists) {
+          return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+        }
     
-    // First check if product exists
-    const docSnap = await productRef.get();
-    if (!docSnap.exists) {
-      return NextResponse.json(
-        { error: 'Product not found' }, 
-        { status: 404 }
-      );
-    }
-
-    // Optional: Delete associated images from storage here
-    // You would need to implement this based on your storage solution
-
-    await productRef.delete();
-
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Product deleted successfully',
-      deletedBy: userId,
-      deletedAt: new Date().toISOString()
-    });
-  } catch (error: any) {
-    console.error('Delete Product Error:', error.message);
-    return NextResponse.json(
-      { error: error.message }, 
-      { status: error.message.includes('Unauthorized') ? 401 : 
-        error.message.includes('Forbidden') ? 403 : 500 }
-    );
-  }
+        const productData = docSnap.data();
+        if (productData?.images && Array.isArray(productData.images)) {
+            for (const image of productData.images) {
+                if (typeof image.imageUrl === 'string' && image.imageUrl.includes('firebasestorage.googleapis.com')) {
+                    try {
+                        const path = new URL(image.imageUrl).pathname.split('/o/')[1].split('?')[0];
+                        await adminStorage.file(decodeURIComponent(path)).delete();
+                    } catch (e) {
+                        console.error(`Failed to delete image for product ${productId}:`, e);
+                    }
+                }
+            }
+        }
+    
+        await productRef.delete();
+    
+        return NextResponse.json({ success: true, message: 'Product deleted successfully' });
+      } catch (error: any) {
+        console.error('Delete Product Error:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
 }
