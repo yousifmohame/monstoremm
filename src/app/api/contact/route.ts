@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       from: `Kyotaku Store <onboarding@resend.dev>`, 
       to: [testingEmail], // Use the testing email here
       subject: `رسالة جديدة من متجر كيوتاكو: ${subject}`,
-      reply_to: email,
+      replyTo: email,
       html: `
         <div style="direction: rtl; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4; padding: 20px;">
             <div style="max-width: 600px; margin: auto; background-color: #ffffff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
