@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 
-// Helper function to verify that the user is an admin
+export const dynamic = 'force-dynamic'; // This line is the fix
+
 async function verifyAdmin(request: NextRequest) {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -22,15 +23,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
 
-    // **Major Fix: Define the variable with the correct type**
     let query: FirebaseFirestore.Query<FirebaseFirestore.DocumentData> = adminDb.collection('orders');
     
-    // Apply status filter if it exists
     if (status && status !== 'all') {
         query = query.where('status', '==', status.toUpperCase());
     }
     
-    // Always apply ordering
     query = query.orderBy('createdAt', 'desc');
     
     const querySnapshot = await query.get();
