@@ -3,14 +3,17 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+// استيراد الـ Hook الخاص بالفئات
 import { Category, useCategories } from '@/hooks/useCategories'
 
 const Categories = () => {
+  // استخدام الـ Hook لجلب البيانات
   const { categories, loading: categoriesLoading, fetchCategories } = useCategories()
 
   useEffect(() => {
+    // جلب الفئات عند تحميل المكون
     fetchCategories()
-  }, [fetchCategories])
+  }, []) // المصفوفة الفارغة تضمن تشغيل هذا مرة واحدة فقط
 
   const getEmoji = (slug: string) => {
     switch (slug) {
@@ -99,7 +102,7 @@ const Categories = () => {
           initial="hidden"
           animate="visible"
         >
-          {categories.map((category, index) => (
+          {categories.map((category: any, index: number) => (
             <motion.div key={category.id} variants={itemVariants}>
               <Link href={`/categories/${category.slug}`}>
                 <motion.div
