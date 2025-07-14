@@ -14,6 +14,7 @@ export default function AdminSettingsPage() {
   
   const [formData, setFormData] = useState<Partial<SiteSettings>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
   useEffect(() => {
     if (user && profile?.isAdmin) {
@@ -38,14 +39,16 @@ export default function AdminSettingsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
+    setFeedbackMessage(null);
     try {
       await updateSettings(formData);
-      alert('تم حفظ الإعدادات بنجاح!');
-    } catch (err) {
-      alert('فشل في حفظ الإعدادات.');
+      setFeedbackMessage({ type: 'success', text: 'تم حفظ الإعدادات بنجاح!' });
+    } catch (err: any) {
+      setFeedbackMessage({ type: 'error', text: `فشل في حفظ الإعدادات: ${err.message}` });
       console.error(err);
     } finally {
       setIsSaving(false);
+      setTimeout(() => setFeedbackMessage(null), 5000); // Hide message after 5 seconds
     }
   };
 
@@ -76,6 +79,13 @@ export default function AdminSettingsPage() {
         <div className="flex items-center justify-between mb-8">
           <div><h1 className="text-3xl font-bold text-gray-800 mb-2">إعدادات المتجر</h1><p className="text-gray-600">إدارة الإعدادات العامة لمتجر كيوتاكو</p></div>
         </div>
+
+        {feedbackMessage && (
+          <div className={`p-4 mb-4 rounded-lg ${feedbackMessage.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+            {feedbackMessage.text}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit}>
           <div className="space-y-8">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="anime-card p-8">
