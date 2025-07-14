@@ -12,7 +12,16 @@ async function getUserIdFromToken(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const userId = await getUserIdFromToken(request);
-    const { shippingAddress, paymentMethod, notes } = await request.json();
+    const {
+        shippingAddress,
+        paymentMethod,
+        notes,
+        subtotal,
+        shippingAmount,
+        taxAmount,
+        totalAmount,
+        currency
+    } = await request.json();
 
     if (!shippingAddress || !paymentMethod) {
       return NextResponse.json({ error: "عنوان الشحن وطريقة الدفع مطلوبان" }, { status: 400 });
@@ -27,7 +36,6 @@ export async function POST(request: NextRequest) {
 
     const result = await adminDb.runTransaction(async (transaction) => {
         const newOrderRef = adminDb.collection("orders").doc();
-        let subtotal = 0;
         const orderItems: any[] = [];
         const customerDoc = await transaction.get(adminDb.collection('users').doc(userId));
         const customerName = customerDoc.exists ? customerDoc.data()?.fullName : 'زائر';
@@ -40,9 +48,8 @@ export async function POST(request: NextRequest) {
             if (!productDoc.exists) throw new Error(`Product with ID ${cartItem.productId} not found.`);
             const productData = productDoc.data()!;
             if (productData.stock < cartItem.quantity) throw new Error(`Not enough stock for ${productData.nameAr}`);
-            
+
             const price = productData.salePrice || productData.price;
-            subtotal += price * cartItem.quantity;
             orderItems.push({
                 productId: cartItem.productId,
                 productName: productData.name,
@@ -56,18 +63,26 @@ export async function POST(request: NextRequest) {
             transaction.update(productRef, { stock: FieldValue.increment(-cartItem.quantity) });
             transaction.delete(doc.ref);
         }
-        
-        const totalAmount = subtotal; // قم بإضافة الشحن والضرائب هنا
+
         const orderNumber = `ORD-${Date.now()}`;
 
         transaction.set(newOrderRef, {
-            userId, orderNumber, totalAmount, shippingAddress, 
-            paymentMethod, notes, items: orderItems, 
-            status: 'PENDING', createdAt: FieldValue.serverTimestamp(),
+            userId,
+            orderNumber,
+            items: orderItems,
+            shippingAddress,
+            paymentMethod,
+            notes,
+            subtotal,
+            shippingAmount,
+            taxAmount,
+            totalAmount,
+            currency,
+            status: 'PENDING',
+            createdAt: FieldValue.serverTimestamp(),
             updatedAt: FieldValue.serverTimestamp()
         });
 
-        // **الإضافة الجديدة: إنشاء إشعار بالطلب الجديد**
         const notificationRef = adminDb.collection("notifications").doc();
         transaction.set(notificationRef, {
             type: 'NEW_ORDER',
