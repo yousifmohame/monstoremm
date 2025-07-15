@@ -174,8 +174,7 @@ export default function OrdersPage() {
                           </span>
                         </div>
                         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                          <div><span className="text-gray-500">تاريخ الطلب:</span><p className="font-semibold">{new Date(order.createdAt).toLocaleDateString('ar-SA')}</p></div>
-                          <div><span className="text-gray-500">المبلغ الإجمالي:</span><p className="font-semibold text-primary-600">{order.totalAmount.toFixed(2)} ريال</p></div>
+                          <div><span className="text-gray-500">المبلغ الإجمالي:</span><p className="font-semibold text-primary-600">{(order.totalAmount || 0).toFixed(2)} ريال</p></div>
                           <div><span className="text-gray-500">عدد المنتجات:</span><p className="font-semibold">{order.items.length} منتج</p></div>
                           {order.trackingNumber && <div><span className="text-gray-500">رقم التتبع:</span><p className="font-semibold text-blue-600">{order.trackingNumber}</p></div>}
                         </div>
@@ -197,7 +196,7 @@ export default function OrdersPage() {
                             <img src={item.productImage} alt={item.productNameAr} className="w-12 h-12 object-cover rounded" />
                             <div className="flex-1">
                               <h4 className="font-semibold text-gray-800 text-sm line-clamp-1">{item.productNameAr}</h4>
-                              <p className="text-gray-600 text-xs">الكمية: {item.quantity} × {item.unitPrice.toFixed(2)} ريال</p>
+                              <p className="text-gray-600 text-xs">الكمية: {item.quantity} × {(item.unitPrice || 0).toFixed(2)} ريال</p>
                             </div>
                           </div>
                         ))}
